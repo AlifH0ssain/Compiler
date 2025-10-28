@@ -1,13 +1,5 @@
 # main.py
-# ------------------------------------------------------------
 # Mini C Compiler + TAC Interpreter (with string literal support)
-# ------------------------------------------------------------
-# Full pipeline:
-# - tokenize -> parse -> semantic -> codegen -> optimize -> targetgen
-# - Execute optimized TAC with nested CALL/PARAM/POP support
-# - Supports printing string literals and integers
-# - Prints tokens, AST, TAC, Optimized TAC, Target code, Program output and exit value
-# ------------------------------------------------------------
 
 from lexical import tokenize
 from parser import Parser, pretty_print_ast
@@ -16,8 +8,7 @@ from codegen import CodeGenerator
 from optimizer import Optimizer
 from targetgen import TargetCodeGenerator
 
-
-def read_source(filename="test2.c"):
+def read_source(filename="test.c"):
     try:
         with open(filename, "r", encoding="utf-8") as f:
             return f.read()
@@ -25,9 +16,7 @@ def read_source(filename="test2.c"):
         print(f"[ERROR] File '{filename}' not found!")
         return ""
 
-
 def format_tac(tac):
-    """Pretty-print TAC for debugging"""
     lines = []
     for instr in tac:
         op, a1, a2, res = instr
@@ -65,10 +54,7 @@ def format_tac(tac):
             lines.append("  " + " ".join(str(x) for x in instr))
     return "\n".join(lines)
 
-
-# ------------------------------------------------------------
 # TAC Interpreter (supports strings and numbers)
-# ------------------------------------------------------------
 class TACInterpreter:
     def __init__(self, tac):
         self.tac = tac
@@ -87,47 +73,36 @@ class TACInterpreter:
                 self.functions[a1] = idx
 
     def _is_string_literal(self, token_value):
-        """Detect a raw string literal token (with surrounding quotes)."""
+        
         if token_value is None:
             return False
         return isinstance(token_value, str) and len(token_value) >= 2 and token_value[0] == '"' and token_value[-1] == '"'
 
     def get_val_from_env(self, env, val):
-        """
-        Resolve a value coming from TAC operand:
-         - If val is a string literal like '"Hello"', return Python str 'Hello'
-         - If val is an integer literal string '123', return int 123
-         - If val is a variable name, look up in env (could be int or str)
-         - If not found, return 0
-        Returns either int or str depending on the input.
-        """
+
         if val is None:
             return 0
-        # If val is already a Python int/str (possible if codegen used raw types), handle:
+        
         if isinstance(val, int) or isinstance(val, str) and not val:
-            # fallthrough to parsing logic below
             pass
 
-        # If it's a quoted string literal (coming directly from lexer/token), strip quotes
         if self._is_string_literal(val):
-            return val[1:-1]  # remove surrounding quotes
-
-        # Try parse as integer literal (some codegen uses "3" etc.)
+            return val[1:-1]  
+        
         try:
             return int(val)
         except (ValueError, TypeError):
-            # otherwise treat as variable name: fetch from current env (top of stack)
+
             if not self.env_stack:
                 return 0
-            # search from top env down (lexical-like behavior)
+
             for env in reversed(self.env_stack):
                 if val in env:
                     return env[val]
-            # not found, default 0
+
             return 0
 
     def _ensure_int(self, v, op_name):
-        """Ensure v is an int for arithmetic/comparison. Raise runtime error if not."""
         if isinstance(v, str):
             # attempt to convert numeric-looking strings
             try:
@@ -137,11 +112,7 @@ class TACInterpreter:
         return v
 
     def run_func(self, func_name, args):
-        """
-        Execute function body starting at FUNC func_name.
-        - args: list of integer/string arguments (already evaluated)
-        Returns the integer/string return value.
-        """
+
         if func_name not in self.functions:
             raise RuntimeError(f"[Runtime] Function '{func_name}' not found")
 
@@ -173,19 +144,15 @@ class TACInterpreter:
                 break
 
             if op == "MOV":
-                # MOV a1 -> res
-                # a1 may be a string literal like '"Hello"' or a temp/var name or numeric string
                 val = self.get_val_from_env(env, a1)
                 env[res] = val
 
             elif op in ("PLUS", "MINUS", "MUL", "DIV", "EQ", "NE", "GT", "LT", "GE", "LE"):
-                # Evaluate left/right via current env resolution
                 left_raw = self.get_val_from_env(env, a1)
                 right_raw = self.get_val_from_env(env, a2)
 
-                # Ensure numeric context for arithmetic/comparison (except if comparing strings with EQ/NE)
                 if op in ("EQ", "NE"):
-                    # allow string comparisons as well as numeric comparisons
+
                     if isinstance(left_raw, str) or isinstance(right_raw, str):
                         result = int(str(left_raw) == str(right_raw)) if op == "EQ" else int(str(left_raw) != str(right_raw))
                     else:
@@ -214,30 +181,26 @@ class TACInterpreter:
                 env[res] = result
 
             elif op == "PARAM":
-                # push evaluated argument (a1 may be variable, literal, or string)
                 val = self.get_val_from_env(env, a1)
                 self.params.append(val)
 
             elif op == "CALL":
-                # pop last 'a2' args from params (they were pushed earlier)
                 argc = int(a2) if a2 is not None else 0
                 args_for_call = []
+
                 if argc:
                     args_for_call = self.params[-argc:]
-                    # remove them from global param stack
                     del self.params[-argc:]
-                # call nested function recursively
+
                 nested_ret = self.run_func(a1, args_for_call)
-                # store return in a reserved name 'ret' in this env for POP
                 env["ret"] = nested_ret
 
             elif op == "POP":
-                # pop return of last call into res (res is temp or var)
                 env[res] = env.get("ret", 0)
 
             elif op == "PRINT":
                 v = self.get_val_from_env(env, a1)
-                # If it's a Python string, print it as-is. If int, print number.
+
                 if isinstance(v, str):
                     print(v)
                     self.output.append(v)
@@ -248,10 +211,9 @@ class TACInterpreter:
             elif op == "IFZ_GOTO":
                 cond = self.get_val_from_env(env, a1)
                 cond_int = self._ensure_int(cond, "IFZ_GOTO")
+
                 if cond_int == 0:
-                    # jump pc to label index
                     pc = self.labels.get(res, pc)
-                    # continue without pc += 1
                     continue
 
             elif op == "GOTO":
@@ -259,12 +221,10 @@ class TACInterpreter:
                 continue
 
             elif op == "LABEL":
-                # label marker - nothing to do
                 pass
 
             elif op == "RET":
                 ret_val = self.get_val_from_env(env, a1)
-                # pop env and return
                 self.env_stack.pop()
                 return ret_val
 
@@ -275,8 +235,6 @@ class TACInterpreter:
         return ret_val
 
     def execute(self):
-        """Execute the 'main' function and return (outputs_list, return_value)."""
-        # Build label and function indices once
         self.build_indices()
 
         if "main" not in self.functions:
@@ -288,12 +246,10 @@ class TACInterpreter:
         return self.output, self.return_value
 
 
-# ------------------------------------------------------------
 # Compiler pipeline + runtime execution 
-# ------------------------------------------------------------
-def compile_source(filename="test2.c"):
+def compile_source(filename="test.c"):
     print("===============================================")
-    print("   MINI C COMPILER (Python - Custom Version)")
+    print("        MINI C COMPILER (Python")
     print("===============================================\n")
 
     src = read_source(filename)
@@ -352,8 +308,8 @@ def compile_source(filename="test2.c"):
     outputs, ret_val = vm.execute()
     print("-----------------------------------------------")
     print(f"Program exited with return value: {ret_val}")
-    print("✅ Compilation and Execution Successful!")
+    print("Compilation and Execution Successful!")
 
 
 if __name__ == "__main__":
-    compile_source("test2.c")
+    compile_source("test.c")

@@ -1,14 +1,5 @@
 # targetgen.py
-# ------------------------------------------------------------
 # Target Code Generator for our Mini C Compiler (Python Version)
-# ------------------------------------------------------------
-# Converts optimized TAC into simple, assembly-like target code.
-# This version improves the handling of "arithmetic -> MOV temp->var"
-# patterns to:
-#  - emit in-place arithmetic when safe (e.g., ADD i, 1)
-#  - emit in-place arithmetic + MOV var, left when needed
-#  - avoid emitting redundant MOV x, x
-# ------------------------------------------------------------
 
 from typing import List, Tuple, Optional
 
@@ -26,7 +17,6 @@ class TargetCodeGenerator:
         }.get(op, op)
 
     def generate(self) -> List[str]:
-        # Build quick index map of definitions (not strictly required but kept for clarity)
         i = 0
         n = len(self.optimized_tac)
         while i < n:
@@ -34,7 +24,7 @@ class TargetCodeGenerator:
 
             # Function label
             if op == "FUNC":
-                # print function name as label
+
                 if a1:
                     self.target_code.append(f"{a1}:")
                 else:
@@ -43,13 +33,12 @@ class TargetCodeGenerator:
                 continue
 
             if op == "END_FUNC":
-                # no-op for end func — keep for readability
                 i += 1
                 continue
 
             # Arithmetic producing a temp followed by MOV temp -> var
             if op in ("PLUS", "MINUS", "MUL", "DIV", "EQ", "NE", "GT", "LT", "GE", "LE") and res and res.startswith("t"):
-                # Look ahead for MOV res -> var
+
                 if i + 1 < n:
                     nop, na1, na2, nres = self.optimized_tac[i+1]
                     if nop == "MOV" and na1 == res and nres:
@@ -58,18 +47,12 @@ class TargetCodeGenerator:
                         right = a2
                         dest = nres
 
-                        # If left operand equals the final destination, do in-place and skip MOV
                         if left == dest:
-                            # emit in-place arithmetic, result lives in 'left' already
                             self.target_code.append(f"{asm} {left}, {right}")
-                            # skip the following MOV entirely
                             i += 2
                             continue
                         else:
-                            # Common pattern: do op in-place on left operand, then move left -> dest
-                            # Emit in-place operation on left operand, then MOV dest, left
                             self.target_code.append(f"{asm} {left}, {right}")
-                            # Avoid redundant MOV (dest, left) when dest == left (covered above)
                             if dest != left:
                                 self.target_code.append(f"MOV {dest}, {left}")
                             i += 2

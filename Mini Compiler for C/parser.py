@@ -1,21 +1,8 @@
 # Recursive Descent Parser for Mini C Compiler
-# ----------------------------------------------------------
-# Features:
-#   - Variable declarations & assignments
-#   - Return statements
-#   - print(expr);
-#   - if (cond) { ... } else if (cond) { ... } else { ... }
-#   - while (cond) { ... }
-#   - Function definitions and calls
-#   - Comparison and arithmetic operators
-# ----------------------------------------------------------
 
 from lexical import Token, tokenize
 
-
-# ----------------------------------------------------------
 # AST Node Definitions
-# ----------------------------------------------------------
 class ASTNode: pass
 
 class Program(ASTNode):
@@ -40,7 +27,7 @@ class BinOp(ASTNode):
 class Number(ASTNode):
     def __init__(self, value): self.value = int(value)
 
-class String(ASTNode):                # <-- NEW
+class String(ASTNode):                
     def __init__(self, value):
         self.value = value.strip('"')
 
@@ -61,9 +48,7 @@ class FuncCall(ASTNode):
     def __init__(self, name, args): self.name, self.args = name, args
 
 
-# ----------------------------------------------------------
 # Parser
-# ----------------------------------------------------------
 class Parser:
     def __init__(self, tokens):
         self.tokens, self.pos = tokens, 0
@@ -86,7 +71,6 @@ class Parser:
         tok = self.current_token()
         raise SyntaxError(f"[Line {tok.line}, Col {tok.col}] {msg}")
 
-    # ----------------------------------------------------------
     def parse(self):
         functions = []
         while self.current_token().type != "EOF":
@@ -113,7 +97,6 @@ class Parser:
         self.eat("RBRACE")
         return Function(name, params, body)
 
-    # ----------------------------------------------------------
     def statement(self):
         t = self.current_token().type
         if t == "INT": return self.declaration()
@@ -185,7 +168,6 @@ class Parser:
                 break
         self.eat("RPAREN"); return FuncCall(name, args)
 
-    # ----------------------------------------------------------
     def expression(self): return self.relational()
 
     def relational(self):
@@ -220,10 +202,7 @@ class Parser:
         else:
             self.error(f"Unexpected token {tok.type} in expression")
 
-
-# ----------------------------------------------------------
-# Pretty Printer for AST
-# ----------------------------------------------------------
+# Printer for AST
 def op_symbol(op):
     return {
         "PLUS": "+", "MINUS": "-", "MUL": "*", "DIV": "/",

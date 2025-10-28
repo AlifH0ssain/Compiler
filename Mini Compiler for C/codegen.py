@@ -1,14 +1,5 @@
 # codegen.py
-# ----------------------------------------------------------
 # Intermediate Code Generator (TAC) for Mini C Compiler
-# ----------------------------------------------------------
-# Generates Three-Address Code (TAC)
-# Supports:
-#   - Variables, arithmetic, control flow
-#   - if-else, while, return, print
-#   - function definitions and calls
-#   - string literals (print("Hello"))
-# ----------------------------------------------------------
 
 from parser import (
     Program, Function, Declaration, Assignment, Return,
@@ -23,7 +14,6 @@ class CodeGenerator:
         self.temp_count = 0
         self.label_count = 0
 
-    # ----------------------------------------------------------
     def new_temp(self):
         self.temp_count += 1
         return f"t{self.temp_count}"
@@ -32,11 +22,9 @@ class CodeGenerator:
         self.label_count += 1
         return f"{base}{self.label_count}"
 
-    # ----------------------------------------------------------
     def emit(self, op, a1=None, a2=None, res=None):
         self.code.append((op, a1, a2, res))
 
-    # ----------------------------------------------------------
     def generate(self):
         for func in self.ast.functions:
             self.emit("FUNC", func.name, None, None)
@@ -48,7 +36,6 @@ class CodeGenerator:
             self.emit("END_FUNC", func.name, None, None)
         return self.code
 
-    # ----------------------------------------------------------
     def generate_statement(self, stmt):
         if isinstance(stmt, Declaration):
             if stmt.value:
@@ -98,14 +85,13 @@ class CodeGenerator:
         else:
             raise Exception(f"Unknown statement type: {type(stmt).__name__}")
 
-    # ----------------------------------------------------------
     def generate_expression(self, expr):
         if isinstance(expr, Number):
             t = self.new_temp()
             self.emit("MOV", expr.value, None, t)
             return t
 
-        elif isinstance(expr, String):  # ✅ handle string literals
+        elif isinstance(expr, String):  
             t = self.new_temp()
             self.emit("MOV", f'"{expr.value}"', None, t)
             return t

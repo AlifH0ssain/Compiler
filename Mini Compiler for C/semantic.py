@@ -1,14 +1,6 @@
 # semantic.py
-# ----------------------------------------------------------
 # Semantic Analyzer for Mini C Compiler
-# ----------------------------------------------------------
-# Checks:
-#   - Variables declared before use (per function)
-#   - No duplicate declarations
-#   - Parameters added to function scope
-#   - Functions must be declared before call
-#   - Allows string literals for print("text")
-# ----------------------------------------------------------
+
 
 from parser import (
     Program, Function, Declaration, Assignment, Return,
@@ -36,9 +28,7 @@ class SemanticAnalyzer:
         for func in self.ast.functions:
             self.visit_function(func)
 
-    # ----------------------------------------------------------
     # Function-level analysis
-    # ----------------------------------------------------------
     def visit_function(self, func):
         print(f"\nAnalyzing function: {func.name}")
         self.symbol_table = {}
@@ -52,9 +42,7 @@ class SemanticAnalyzer:
         for stmt in func.body:
             self.visit_statement(stmt)
 
-    # ----------------------------------------------------------
     # Statement visitors
-    # ----------------------------------------------------------
     def visit_statement(self, stmt):
         if isinstance(stmt, Declaration):
             self.visit_declaration(stmt)
@@ -92,7 +80,6 @@ class SemanticAnalyzer:
         self.visit_expression(ret.value)
 
     def visit_print(self, p):
-        # ✅ Strings are allowed in print statements
         val_type = self.visit_expression(p.value)
         if val_type not in ("int", "string"):
             self.error(f"Cannot print type '{val_type}'")
@@ -124,14 +111,12 @@ class SemanticAnalyzer:
         for arg in call.args:
             self.visit_expression(arg)
 
-    # ----------------------------------------------------------
     # Expression visitors
-    # ----------------------------------------------------------
     def visit_expression(self, expr):
         if isinstance(expr, Number):
             return "int"
 
-        elif isinstance(expr, String):  # ✅ Added string literal support
+        elif isinstance(expr, String):  
             return "string"
 
         elif isinstance(expr, Var):
@@ -153,7 +138,6 @@ class SemanticAnalyzer:
         else:
             self.error(f"Unknown expression: {expr}")
 
-    # ----------------------------------------------------------
     def error(self, message):
         raise Exception(f"Semantic Error: {message}")
 

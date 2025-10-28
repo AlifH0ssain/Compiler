@@ -1,10 +1,4 @@
 # Optimizer for Mini C Compiler
-# ------------------------------------------------------------
-# Simple passes:
-#   - Constant folding when both operands numeric
-#   - Propagate MOV temporaries (tX -> literal or expression) where safe
-#   - Do not collapse control-flow instructions (LABEL, IFZ_GOTO, GOTO, FUNC, CALL, PARAM, POP)
-# ------------------------------------------------------------
 
 class Optimizer:
     def __init__(self, tac):
@@ -13,7 +7,7 @@ class Optimizer:
     def optimize(self):
         # Keep control-flow ops and structured arithmetic as separate ops
         optimized = []
-        temp_map = {}  # map temp -> value (literal or expression string)
+        temp_map = {}  
 
         def resolve(x):
             return temp_map.get(x, x)
